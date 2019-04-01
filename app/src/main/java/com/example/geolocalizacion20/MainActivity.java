@@ -30,7 +30,8 @@ public class MainActivity extends AppCompatActivity {
     private FusedLocationProviderClient fusedLocationProviderClient;
 
     private AddressResultReceiver resultReceiver;
-
+    private LocationCallback callback;
+    private LocationRequest request;
     private Location ultimaPosicion = null;
     private TextView tvLatitud;
     private TextView tvLongitud;
@@ -42,8 +43,7 @@ public class MainActivity extends AppCompatActivity {
         tvLatitud = findViewById(R.id.textView);
         tvLongitud = findViewById(R.id.textView2);
 
-        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
-        resultReceiver = new AddressResultReceiver(new Handler());
+
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             if(ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_FINE_LOCATION)){
@@ -58,6 +58,10 @@ public class MainActivity extends AppCompatActivity {
 
     @SuppressLint("MissingPermission")
     private void getLocation(){
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+        resultReceiver = new AddressResultReceiver(new Handler());
+        callback = createLocationCallback();
+        request = createLocationRequest();
         fusedLocationProviderClient.getLastLocation().addOnSuccessListener(this, new OnSuccessListener<Location>() {
             @Override
             public void onSuccess(Location location) {
@@ -67,17 +71,16 @@ public class MainActivity extends AppCompatActivity {
                     tvLongitud.setText("longitud:" + location.getLongitude());
                     System.out.println("latitud: " + location.getLatitude());
                     System.out.println("longitud:" + location.getLongitude());
-                    requestAddress(ultimaPosicion);
                 }else{
                     System.out.println("localizacion vacia");
                 }
             }
         });
-        fusedLocationProviderClient.requestLocationUpdates(createLocationRequest(), createLocationCallback(), null);
+        fusedLocationProviderClient.requestLocationUpdates(request, callback, null);
     }
 
     private LocationCallback createLocationCallback(){
-        LocationCallback locationCallback = new LocationCallback(){
+        final LocationCallback locationCallback = new LocationCallback(){
             @Override
             public void onLocationResult(LocationResult locationResult) {
                 super.onLocationResult(locationResult);
@@ -85,9 +88,14 @@ public class MainActivity extends AppCompatActivity {
                     ultimaPosicion = location;
                     System.out.println("latitud: " + location.getLatitude());
                     System.out.println("longitud:" + location.getLongitude());
-                    tvLatitud.setText("latitud: " + location.getLatitude());
-                    tvLongitud.setText("longitud:" + location.getLongitude());
+
                 }
+                requestAddress(ultimaPosicion);
+                //parar fused
+                fusedLocationProviderClient.removeLocationUpdates(callback);
+                tvLatitud.setText("latitud: " + ultimaPosicion.getLatitude());
+                tvLongitud.setText("longitud:" + ultimaPosicion.getLongitude());
+
             }
         };
         return locationCallback;
